@@ -727,6 +727,15 @@ jobs:
           enable_config CONFIG_IPC_NS
           enable_config CONFIG_PID_NS
           enable_config CONFIG_DEVTMPFS
+          enable_config_if_defined CONFIG_USER_NS
+
+          # 构建前强制确认 Droidspaces 必需配置已经写入 defconfig
+          for cfg in CONFIG_SYSVIPC CONFIG_POSIX_MQUEUE CONFIG_IPC_NS CONFIG_PID_NS CONFIG_DEVTMPFS; do
+            if ! grep -q "^${cfg}=y$" "$DEFCONFIG"; then
+              echo "::error::Droidspaces 必需配置缺失: ${cfg}"
+              exit 1
+            fi
+          done
 
           # 可选: 网络相关配置 (Docker/NAT 模式)
           enable_config_if_defined CONFIG_NETFILTER_XT_MATCH_ADDRTYPE
