@@ -988,7 +988,13 @@ jobs:
         if: inputs.use_bbg
         working-directory: ${{ env.KERNEL_ROOT }}
         run: |
-          wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
+          # Pin BBG to the revision used by the reference ZIP build on 2025-12-11.
+          # The current main branch removed the three Kconfig symbols below.
+          BBG_COMMIT=75668b6cbd039df0d224e9d14b2a3941c602fd1c
+          BBG_DIR="$KERNEL_ROOT/Baseband-guard"
+          git clone --filter=blob:none https://github.com/vc-teahouse/Baseband-guard.git "$BBG_DIR"
+          git -C "$BBG_DIR" checkout --detach "$BBG_COMMIT"
+          bash "$BBG_DIR/setup.sh" "$BBG_COMMIT"
           echo "CONFIG_BBG=y" >> common/arch/arm64/configs/gki_defconfig
           # Preserve the original v2.0.0-r14 Android 14/6.1.75 BBG policy.
           # The reference ZIP enabled these options in addition to CONFIG_BBG.
