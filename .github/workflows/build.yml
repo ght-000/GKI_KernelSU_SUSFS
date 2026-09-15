@@ -248,8 +248,28 @@ jobs:
           ANYKERNEL_BRANCH="gki-2.0"
           SUSFS_BRANCH="gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}"
 
+          # The reference ZIP was built from these code repositories at the
+          # 2025-12-11 historical build. Tools remain rolling; source code does not.
+          if [ "${{ inputs.android_version }}" = "android14" ] && [ "${{ inputs.kernel_version }}" = "6.1" ] && [ "${{ inputs.sub_level }}" = "75" ] && [ "${{ inputs.os_patch_level }}" = "2024-05" ]; then
+            ANYKERNEL_REPO="https://github.com/WildPlusKernel/AnyKernel3.git"
+            ANYKERNEL_COMMIT="403605f4a57b818839585dbae2c4b10765f13fcb"
+            KERNEL_PATCHES_REPO="https://github.com/WildPlusKernel/kernel_patches.git"
+            KERNEL_PATCHES_COMMIT="2ca270bc2edfb59be3a8b9319f21652bc99f7872"
+            SUKISU_PATCH_COMMIT="83aa64b7548890bb1f2eff6c990c03a1802df27b"
+          else
+            ANYKERNEL_REPO="https://github.com/WildKernels/AnyKernel3.git"
+            KERNEL_PATCHES_REPO="https://github.com/WildKernels/kernel_patches.git"
+            ANYKERNEL_COMMIT=""
+            KERNEL_PATCHES_COMMIT=""
+            SUKISU_PATCH_COMMIT=""
+          fi
+
           echo "克隆 AnyKernel3..."
-          git clone https://github.com/WildKernels/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
+          git clone "$ANYKERNEL_REPO" -b "$ANYKERNEL_BRANCH"
+          if [ -n "$ANYKERNEL_COMMIT" ]; then
+            git -C AnyKernel3 fetch --quiet origin "$ANYKERNEL_COMMIT"
+            git -C AnyKernel3 checkout --detach "$ANYKERNEL_COMMIT"
+          fi
           rm -rf AnyKernel3/.git
 
           echo "克隆 SUSFS (分支: $SUSFS_BRANCH)..."
@@ -293,8 +313,16 @@ jobs:
           echo "SUSFS 仓库最新提交日期: $SUSFS_LATEST_COMMIT_DATE"
 
           echo "准备补丁资源..."
-          git clone https://github.com/WildKernels/kernel_patches.git
+          git clone "$KERNEL_PATCHES_REPO"
+          if [ -n "$KERNEL_PATCHES_COMMIT" ]; then
+            git -C kernel_patches fetch --quiet origin "$KERNEL_PATCHES_COMMIT"
+            git -C kernel_patches checkout --detach "$KERNEL_PATCHES_COMMIT"
+          fi
           git clone https://github.com/ShirkNeko/SukiSU_patch.git
+          if [ -n "$SUKISU_PATCH_COMMIT" ]; then
+            git -C SukiSU_patch fetch --quiet origin "$SUKISU_PATCH_COMMIT"
+            git -C SukiSU_patch checkout --detach "$SUKISU_PATCH_COMMIT"
+          fi
           echo "使用当前仓库补丁目录: $ZZH_PATCHES"
           git clone https://github.com/Numbersf/Action-Build.git --depth=1
 
@@ -379,6 +407,14 @@ jobs:
             attempt=$((attempt + 1))
           done
 
+          # Pin the actual common-kernel commit embedded in the reference ZIP.
+          if [ "${{ inputs.android_version }}" = "android14" ] && [ "${{ inputs.kernel_version }}" = "6.1" ] && [ "${{ inputs.sub_level }}" = "75" ] && [ "${{ inputs.os_patch_level }}" = "2024-05" ]; then
+            GKI_COMMIT="f0a0e93fe5ed6e29fa3664411891c42c17815e48"
+            git -C common fetch --quiet https://android.googlesource.com/kernel/common "$GKI_COMMIT"
+            git -C common checkout --detach "$GKI_COMMIT"
+            test "$(git -C common rev-parse HEAD)" = "$GKI_COMMIT"
+            echo "GKI pinned: $(git -C common rev-parse HEAD)"
+          fi
           echo "REMOTE_BRANCH=$REMOTE_BRANCH" >> $GITHUB_ENV
 
       - name: 应用 Stock Config 伪装
@@ -668,7 +704,10 @@ jobs:
         run: |
           # 自托管 Runner 的 /tmp 会跨任务保留，使用唯一目录避免旧残留导致 clone 失败。
           DROIDSPACES_DIR="$(mktemp -d /tmp/Droidspaces-OSS.XXXXXX)"
+          DROIDSPACES_COMMIT="1794a6a3bffa119d6320235d23f1b971a897fe86"
           git clone --depth 1 https://github.com/ravindu644/Droidspaces-OSS.git "$DROIDSPACES_DIR"
+          git -C "$DROIDSPACES_DIR" checkout --detach "$DROIDSPACES_COMMIT"
+          echo "Droidspaces pinned: $(git -C "$DROIDSPACES_DIR" rev-parse HEAD)"
           echo "DROIDSPACES_PATCHES=$DROIDSPACES_DIR/Documentation/resources/kernel-patches/GKI" >> $GITHUB_ENV
 
       - name: 备份基准 defconfig
