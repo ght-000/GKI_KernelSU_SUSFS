@@ -1308,6 +1308,24 @@ jobs:
             } >> "$LOG_FILE"
             exit "$BUILD_STATUS"
 
+      - name: 应用固定版本 KPM Image 补丁
+        if: ${{ success() && startsWith(inputs.use_kpm, 'patched') && inputs.ksu_variant == 'SukiSU' && inputs.android_version == 'android14' && inputs.kernel_version == '6.1' && inputs.sub_level == '75' }}
+        run: |
+          set -euo pipefail
+          IMAGE_DIR="$KERNEL_ROOT/bazel-bin/common/kernel_aarch64"
+          PATCH_TOOL="$SUKISU_PATCHES/kpm/patch_linux"
+          test -f "$IMAGE_DIR/Image"
+          test -f "$PATCH_TOOL"
+          echo "使用固定 SukiSU_patch 的 KPM 工具: $PATCH_TOOL"
+          cp "$PATCH_TOOL" "$IMAGE_DIR/patch"
+          chmod 0755 "$IMAGE_DIR/patch"
+          cd "$IMAGE_DIR"
+          ./patch
+          test -s oImage
+          mv -f oImage Image
+          echo "KPM Image 补丁完成"
+          strings Image | grep -E 'KernelPatch|patched=' | head -20 || true
+
       - name: 整理编译失败日志
         if: ${{ always() && steps.compile_kernel.outcome == 'failure' }}
         env:
