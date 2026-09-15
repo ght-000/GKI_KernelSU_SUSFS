@@ -126,6 +126,18 @@ fi
 
 patch -p1 < "$SUSFS_PATCH" || true
 
+# Android 14 6.1 GKI revisions may already include trace/hooks/sched.h
+# between cpufreq_times.h and the SUSFS patch context.  In that case patch(1)
+# rejects only the header hunk while applying the base.c implementation hunks.
+# Restore the required SUSFS header include explicitly.
+if [[ "$ANDROID_VERSION" == "android14" && "$KERNEL_VERSION" == "6.1" ]] \
+  && grep -qF 'BIT_SUS_MAPS' fs/proc/base.c \
+  && ! grep -qF '#include <linux/susfs_def.h>' fs/proc/base.c; then
+  sed -i '/^#include <linux\/cpufreq_times.h>$/a #ifdef CONFIG_KSU_SUSFS_SUS_MAP\n#include <linux/susfs_def.h>\n#endif' fs/proc/base.c
+  rm -f fs/proc/base.c.rej
+  echo "已恢复 Android 14 6.1 base.c 的 SUSFS 头文件包含"
+fi
+
 # 为尚未提供 SU 会话 FD 接口的 SukiSU/ReSukiSU 恢复旧版 exec hook 行为
 EXEC_HELPER=""
 if [[ "$KSU_VARIANT" == SukiSU* || "$KSU_VARIANT" == "ReSukiSU" ]]; then
