@@ -571,22 +571,22 @@ jobs:
 
       - name: 固定原始 ZIP 的 SukiSU 与 SUSFS 版本
         if: inputs.ksu_variant == 'SukiSU' && inputs.android_version == 'android14' && inputs.kernel_version == '6.1' && inputs.sub_level == '75'
-        working-directory: ${{ env.KERNEL_ROOT }}
+        working-directory: ${{ github.workspace }}
         run: |
           set -e
           SukiSU_COMMIT="0d27e685cb9f1b873cd334371c0d8b6ea4c3aea9"
           SUSFS_COMMIT="7635f615ac21f167c62449e216446c3b2bcf2bfa"
 
-          git -C KernelSU fetch --tags --force origin
-          git -C KernelSU checkout --detach "$SukiSU_COMMIT"
+          git -C "$KERNEL_ROOT/KernelSU" fetch --tags --force origin
+          git -C "$KERNEL_ROOT/KernelSU" checkout --detach "$SukiSU_COMMIT"
 
-          if ! git -C susfs4ksu fetch --quiet origin "$SUSFS_COMMIT"; then
-            git -C susfs4ksu fetch --quiet https://gitlab.com/simonpunk/susfs4ksu.git "$SUSFS_COMMIT"
+          if ! git -C "$SUSFS4KSU" fetch --quiet origin "$SUSFS_COMMIT"; then
+            git -C "$SUSFS4KSU" fetch --quiet https://gitlab.com/simonpunk/susfs4ksu.git "$SUSFS_COMMIT"
           fi
-          git -C susfs4ksu checkout --detach "$SUSFS_COMMIT"
+          git -C "$SUSFS4KSU" checkout --detach "$SUSFS_COMMIT"
 
-          echo "SukiSU pinned: $(git -C KernelSU rev-parse HEAD)"
-          echo "SUSFS pinned: $(git -C susfs4ksu rev-parse HEAD)"
+          echo "SukiSU pinned: $(git -C "$KERNEL_ROOT/KernelSU" rev-parse HEAD)"
+          echo "SUSFS pinned: $(git -C "$SUSFS4KSU" rev-parse HEAD)"
 
       - name: 配置 SukiSU 管理器信息
         if: inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'SukiSU(40726)' || inputs.ksu_variant == 'SukiSU(40548)'
