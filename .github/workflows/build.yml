@@ -666,8 +666,10 @@ jobs:
       - name: 克隆 Droidspaces 补丁仓库
         if: inputs.droidspaces != 'off'
         run: |
-          git clone --depth 1 https://github.com/ravindu644/Droidspaces-OSS.git /tmp/Droidspaces-OSS
-          echo "DROIDSPACES_PATCHES=/tmp/Droidspaces-OSS/Documentation/resources/kernel-patches/GKI" >> $GITHUB_ENV
+          # 自托管 Runner 的 /tmp 会跨任务保留，使用唯一目录避免旧残留导致 clone 失败。
+          DROIDSPACES_DIR="$(mktemp -d /tmp/Droidspaces-OSS.XXXXXX)"
+          git clone --depth 1 https://github.com/ravindu644/Droidspaces-OSS.git "$DROIDSPACES_DIR"
+          echo "DROIDSPACES_PATCHES=$DROIDSPACES_DIR/Documentation/resources/kernel-patches/GKI" >> $GITHUB_ENV
 
       - name: 备份基准 defconfig
         run: cp "$DEFCONFIG" "$DEFCONFIG.orig"
