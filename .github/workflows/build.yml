@@ -1170,6 +1170,14 @@ jobs:
             perl -i -0777 -pe 's/(.*)echo "\$\{KERNELVERSION\}\$\{file_localversion\}\$\{config_localversion\}\$\{LOCALVERSION\}\$\{scm_version\}"/$1echo "\$\{KERNELVERSION\}'"${CLEAN_VERSION}"'"/s' ./common/scripts/setlocalversion 2>/dev/null || true
             sed -i "\$s|echo \"\$res\"|echo \"${CLEAN_VERSION}\"|" ./common/scripts/setlocalversion 2>/dev/null || true
             sed -i '/^CONFIG_LOCALVERSION=/ s/="\([^"]*\)"/="'"$CLEAN_VERSION"'"/' ./common/arch/arm64/configs/gki_defconfig
+          elif [ "${{ inputs.android_version }}" = "android14" ] && [ "${{ inputs.kernel_version }}" = "6.1" ] && [ "${{ inputs.sub_level }}" = "75" ] && [ "${{ inputs.os_patch_level }}" = "2024-05" ] && [ ! -f "build/build.sh" ]; then
+            # Match the reference ZIP exactly: do not append the newer random
+            # -ab########-4k suffix to the kernel release string.
+            cd ./common
+            REFERENCE_LOCALVERSION="-android14-11-gf0a0e93fe5ed6"
+            sed -i "\$s|echo \"\$res\"|echo \"${REFERENCE_LOCALVERSION}\"|" ./scripts/setlocalversion
+            sed -i '/^CONFIG_LOCALVERSION=/ s/="[^"]*"/=""/' ./arch/arm64/configs/gki_defconfig
+            echo "Reference localversion pinned: ${REFERENCE_LOCALVERSION}"
           elif [ ! -f "build/build.sh" ]; then
             cd ./common
             BID="ab$((RANDOM % 90000000 + 10000000))"
