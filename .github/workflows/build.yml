@@ -574,7 +574,10 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           set -e
-          SukiSU_COMMIT="0d27e685cb9f1b873cd334371c0d8b6ea4c3aea9"
+          # v4.1.0 API with the builtin SUSFS integration used by the
+          # 2025-12-11 v2.0.0-r14 reference build.  Pinning the release tag
+          # directly would drop the builtin branch's SUSFS Kconfig wiring.
+          SukiSU_COMMIT="f71f861f96c45f8467709d6e020db527fc6b6a6a"
           SUSFS_COMMIT="7635f615ac21f167c62449e216446c3b2bcf2bfa"
 
           git -C "$KERNEL_ROOT/KernelSU" fetch --tags --force origin
