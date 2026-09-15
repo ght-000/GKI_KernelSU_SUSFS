@@ -587,6 +587,8 @@ jobs:
 
           echo "SukiSU pinned: $(git -C "$KERNEL_ROOT/KernelSU" rev-parse HEAD)"
           echo "SUSFS pinned: $(git -C "$SUSFS4KSU" rev-parse HEAD)"
+          echo "KSU_LATEST_COMMIT_DATE=$(git -C "$KERNEL_ROOT/KernelSU" log -1 --date=format:'%Y-%m-%d %H:%M:%S %z' --format='%cd')" >> "$GITHUB_ENV"
+          echo "SUSFS_LATEST_COMMIT_DATE=$(git -C "$SUSFS4KSU" log -1 --date=format:'%Y-%m-%d %H:%M:%S %z' --format='%cd')" >> "$GITHUB_ENV"
 
       - name: 配置 SukiSU 管理器信息
         if: inputs.ksu_variant == 'SukiSU' || inputs.ksu_variant == 'SukiSU(40726)' || inputs.ksu_variant == 'SukiSU(40548)'
@@ -651,6 +653,78 @@ jobs:
           OS_PATCH_LEVEL: ${{ inputs.os_patch_level }}
           SUB_LEVEL: ${{ inputs.sub_level }}
         run: bash "$GITHUB_WORKSPACE/scripts/susfs_fixes/apply.sh"
+
+      - name: 补齐原始 SUSFS Kconfig 定义
+        if: inputs.enable_susfs
+        run: |
+          python3 - "$KERNEL_ROOT/KernelSU/kernel/Kconfig" <<'PY'
+          from pathlib import Path
+          import sys
+
+          path = Path(sys.argv[1])
+          text = path.read_text()
+          if "config KSU_SUSFS\n" not in text:
+              block = r'''
+          config KSU_SUSFS
+              bool "SUSFS support"
+              depends on KSU
+              default n
+
+          config KSU_SUSFS_SUS_PATH
+              bool "SUSFS path hiding"
+              depends on KSU_SUSFS
+              default n
+
+          config KSU_SUSFS_SUS_MOUNT
+              bool "SUSFS mount hiding"
+              depends on KSU_SUSFS
+              default n
+
+          config KSU_SUSFS_SUS_KSTAT
+              bool "SUSFS kstat spoofing"
+              depends on KSU_SUSFS
+              default n
+
+          config KSU_SUSFS_SPOOF_UNAME
+              bool "SUSFS uname spoofing"
+              depends on KSU_SUSFS
+              default n
+
+          config KSU_SUSFS_ENABLE_LOG
+              bool "SUSFS kernel log"
+              depends on KSU_SUSFS
+              default n
+
+          config KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+              bool "Hide KernelSU/SUSFS symbols"
+              depends on KSU_SUSFS
+              default n
+
+          config KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+              bool "SUSFS cmdline/bootconfig spoofing"
+              depends on KSU_SUSFS
+              default n
+
+          config KSU_SUSFS_OPEN_REDIRECT
+              bool "SUSFS open redirect"
+              depends on KSU_SUSFS
+              default n
+
+          config KSU_SUSFS_SUS_MAP
+              bool "SUSFS map hiding"
+              depends on KSU_SUSFS
+              default n
+          '''
+              marker = "\nendmenu"
+              pos = text.rfind(marker)
+              if pos < 0:
+                  raise SystemExit(f"未找到 Kconfig endmenu: {path}")
+              text = text[:pos] + "\n" + block.rstrip() + text[pos:]
+              path.write_text(text)
+              print(f"已添加原始 SUSFS Kconfig 定义: {path}")
+          else:
+              print(f"SUSFS Kconfig 定义已存在: {path}")
+          PY
 
       - name: 克隆 Droidspaces 补丁仓库
         if: inputs.droidspaces != 'off'
