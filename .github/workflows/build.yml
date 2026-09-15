@@ -646,6 +646,12 @@ jobs:
 
           echo "已更新 get_ksu_version_full 模板: $VERSION_TEMPLATE"
 
+          # 复现原始 ZIP 的 SukiSU API 版本，避免当前 latest release 滚动到 v4.2.0。
+          if [ "${{ inputs.ksu_variant }}" = "SukiSU" ] && [ "${{ inputs.android_version }}" = "android14" ] && [ "${{ inputs.kernel_version }}" = "6.1" ] && [ "${{ inputs.sub_level }}" = "75" ]; then
+            sed -i 's/^KSU_GITHUB_VERSION := .*/KSU_GITHUB_VERSION := 4.1.0/' "$KBUILD_FILE"
+            echo "固定 SukiSU API 版本: v4.1.0"
+          fi
+
       - name: 应用 SUSFS 补丁
         if: inputs.enable_susfs
         working-directory: ${{ env.KERNEL_ROOT }}
