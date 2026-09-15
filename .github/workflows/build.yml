@@ -323,7 +323,17 @@ jobs:
             git -C SukiSU_patch fetch --quiet origin "$SUKISU_PATCH_COMMIT"
             git -C SukiSU_patch checkout --detach "$SUKISU_PATCH_COMMIT"
           fi
-          echo "使用当前仓库补丁目录: $ZZH_PATCHES"
+          # The original build used the zzh repository at the release commit.
+          # Keep the current fork only for the CI orchestration; use the historical
+          # tree for any zzh patch/config files consumed by this target build.
+          if [ "${{ inputs.android_version }}" = "android14" ] && [ "${{ inputs.kernel_version }}" = "6.1" ] && [ "${{ inputs.sub_level }}" = "75" ] && [ "${{ inputs.os_patch_level }}" = "2024-05" ]; then
+            ZZH_REFERENCE_DIR="$GITHUB_WORKSPACE/zzh_patch_reference"
+            git clone --filter=blob:none https://github.com/zzh20188/GKI_KernelSU_SUSFS.git "$ZZH_REFERENCE_DIR"
+            git -C "$ZZH_REFERENCE_DIR" checkout --detach "67b554ce845b82ae6d14dbe9bdc3ae91ac41db17"
+            echo "ZZH_PATCHES=$ZZH_REFERENCE_DIR" >> $GITHUB_ENV
+            echo "zzh_patch pinned: $(git -C "$ZZH_REFERENCE_DIR" rev-parse HEAD)"
+          fi
+          echo "使用补丁目录: $ZZH_PATCHES"
           git clone https://github.com/Numbersf/Action-Build.git --depth=1
 
       - name: 初始化并同步内核源码
