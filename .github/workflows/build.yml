@@ -988,6 +988,16 @@ jobs:
         run: |
           wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
           echo "CONFIG_BBG=y" >> common/arch/arm64/configs/gki_defconfig
+          # Preserve the original v2.0.0-r14 Android 14/6.1.75 BBG policy.
+          # The reference ZIP enabled these options in addition to CONFIG_BBG.
+          if [ "${{ inputs.android_version }}" = "android14" ] && [ "${{ inputs.kernel_version }}" = "6.1" ] && [ "${{ inputs.sub_level }}" = "75" ]; then
+            cat >> common/arch/arm64/configs/gki_defconfig << 'EOF'
+          CONFIG_BBG_ALLOW_IN_RECOVERY=y
+          CONFIG_BBG_DOMAIN_PROTECTION=y
+          CONFIG_BBG_ANTI_SPOOF_DOMAIN=3
+          CONFIG_LSM="landlock,lockdown,baseband_guard,yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor,bpf"
+          EOF
+          fi
           sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' common/security/Kconfig
 
       - name: 应用 Re-Kernel
@@ -1035,8 +1045,6 @@ jobs:
         run: |
           cat >> "$DEFCONFIG" << 'EOF'
           CONFIG_KSU=y
-          CONFIG_TMPFS_XATTR=y
-          CONFIG_TMPFS_POSIX_ACL=y
           EOF
 
           if [ "${{ inputs.ksu_variant }}" == "SukiSU" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU(40726)" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU(40548)" ] || [ "${{ inputs.ksu_variant }}" == "ReSukiSU" ] || [ "${{ inputs.ksu_variant }}" == "Next" ]; then
