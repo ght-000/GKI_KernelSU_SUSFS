@@ -1244,6 +1244,14 @@ jobs:
             fi
           fi
 
+      - name: 修复 VINTF config_data 兼容性
+        if: inputs.droidspaces != 'off'
+        working-directory: ${{ env.KERNEL_ROOT }}
+        run: |
+          set -euo pipefail
+          python3 "$GITHUB_WORKSPACE/scripts/droidspaces/patch_vintf_config_data.py" common/kernel/Makefile
+          grep -n -A16 -B3 'droidspaces_vintf_config_fix' common/kernel/Makefile
+
       - name: 编译内核
         id: compile_kernel
         uses: nick-fields/retry@v4
