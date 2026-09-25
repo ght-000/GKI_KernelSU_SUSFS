@@ -108,6 +108,10 @@ jobs:
           elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             KSU_VERSION=$((30000 + KSU_GIT_VERSION))
           fi
+          if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ] && [ "${{ github.ref }}" == "refs/heads/build/sukisu-ultra-40900" ]; then
+            KSU_VERSION=40900
+            echo "Pinned SukiSU Ultra v4.2.0 manager/kernel target: 40900"
+          fi
           echo $KSU_VERSION
           echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_ENV
 
@@ -130,6 +134,13 @@ jobs:
         id: add_KSU
         continue-on-error: true
         run: |
+          if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ] && [ "${{ github.ref }}" == "refs/heads/build/sukisu-ultra-40900" ]; then
+            echo "下载 SukiSU Ultra v4.2.0 / 40900 管理器"
+            mkdir -p manager-artifacts/SukiSU_40900
+            curl -fL -o manager-artifacts/SukiSU_40900/SukiSU_v4.2.0_40900-release.apk \
+              https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/download/v4.2.0/SukiSU_v4.2.0_40900-release.apk
+            exit 0
+          fi
           case "${{ inputs.kernelsu_variant }}" in
             "SukiSU(40726)") LEGACY_RELEASE_TAG="v2.1.0-r2"; LEGACY_DIR="SukiSU_40726" ;;
             "SukiSU(40548)") LEGACY_RELEASE_TAG="v2.0.0-r34"; LEGACY_DIR="SukiSU_40548" ;;
