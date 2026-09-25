@@ -616,7 +616,7 @@ jobs:
           fi
 
       - name: 固定原始 ZIP 的 SukiSU 与 SUSFS 版本
-        if: inputs.ksu_variant == 'SukiSU' && inputs.android_version == 'android14' && inputs.kernel_version == '6.1' && inputs.sub_level == '75'
+        if: inputs.ksu_variant == 'SukiSU' && inputs.android_version == 'android14' && inputs.kernel_version == '6.1' && inputs.sub_level == '75' && github.ref != 'refs/heads/build/sukisu-ultra-40900'
         working-directory: ${{ github.workspace }}
         run: |
           set -e
@@ -694,8 +694,15 @@ jobs:
 
           # 复现原始 ZIP 的 SukiSU API 版本，避免当前 latest release 滚动到 v4.2.0。
           if [ "${{ inputs.ksu_variant }}" = "SukiSU" ] && [ "${{ inputs.android_version }}" = "android14" ] && [ "${{ inputs.kernel_version }}" = "6.1" ] && [ "${{ inputs.sub_level }}" = "75" ]; then
-            sed -i 's/^KSU_GITHUB_VERSION := .*/KSU_GITHUB_VERSION := 4.1.0/' "$KBUILD_FILE"
-            echo "固定 SukiSU API 版本: v4.1.0"
+            sed -i 's/^KSU_GITHUB_VERSION := .*/KSU_GITHUB_VERSION := 4.2.0/' "$KBUILD_FILE"
+            echo "固定 SukiSU API 版本: v4.2.0"
+            KSU_VERSION_MAKEFILE="./kernel/Makefile"
+            if [ ! -f "$KSU_VERSION_MAKEFILE" ]; then
+              echo "::error::未找到 SukiSU kernel/Makefile"
+              exit 1
+            fi
+            sed -i -E 's/^KSU_VERSION[[:space:]]*:=[[:space:]].*/KSU_VERSION     := 40900/' "$KSU_VERSION_MAKEFILE"
+            grep -n '^KSU_VERSION' "$KSU_VERSION_MAKEFILE"
           fi
 
       - name: 应用 SUSFS 补丁
