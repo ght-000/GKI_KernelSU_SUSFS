@@ -334,7 +334,18 @@ jobs:
             echo "zzh_patch pinned: $(git -C "$ZZH_REFERENCE_DIR" rev-parse HEAD)"
           fi
           echo "使用补丁目录: $ZZH_PATCHES"
-          git clone https://github.com/Numbersf/Action-Build.git --depth=1
+          ACTION_BUILD_REPO="https://github.com/Numbersf/Action-Build.git"
+          for attempt in 1 2 3; do
+            if git clone --depth=1 "$ACTION_BUILD_REPO" "$ACTION_BUILD"; then
+              break
+            fi
+            rm -rf "$ACTION_BUILD"
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::克隆 Action-Build 重试 3 次仍失败" >&2
+              exit 1
+            fi
+            sleep $((attempt * 15))
+          done
 
       - name: 初始化并同步内核源码
         working-directory: ${{ env.KERNEL_ROOT }}
