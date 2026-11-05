@@ -627,7 +627,7 @@ jobs:
           fi
 
       - name: 固定原始 ZIP 的 SukiSU 与 SUSFS 版本
-        if: inputs.ksu_variant == 'SukiSU' && inputs.android_version == 'android14' && inputs.kernel_version == '6.1' && inputs.sub_level == '75' && github.ref != 'refs/heads/build/sukisu-ultra-40900'
+        if: false
         working-directory: ${{ github.workspace }}
         run: |
           set -e
@@ -704,7 +704,7 @@ jobs:
           echo "已更新 get_ksu_version_full 模板: $VERSION_TEMPLATE"
 
 
-      - name: 固定 SukiSU Ultra v4.2.0 驱动版本为 40900
+      - name: 固定 SukiSU Ultra 驱动版本为 41150
         if: inputs.ksu_variant == 'SukiSU' && inputs.android_version == 'android14' && inputs.kernel_version == '6.1' && inputs.sub_level == '75'
         working-directory: ${{ env.KERNEL_ROOT }}/KernelSU
         run: |
@@ -714,7 +714,7 @@ jobs:
             echo "::error::未找到 $KSU_VERSION_MAKEFILE"
             exit 1
           fi
-          sed -i -E 's/^KSU_VERSION[[:space:]]*:=[[:space:]].*/KSU_VERSION     := 40900/' "$KSU_VERSION_MAKEFILE"
+          sed -i -E 's/^KSU_VERSION[[:space:]]*:=[[:space:]].*/KSU_VERSION     := 41150/' "$KSU_VERSION_MAKEFILE"
           grep -n '^KSU_VERSION' "$KSU_VERSION_MAKEFILE"
 
       - name: 应用 SUSFS 补丁
