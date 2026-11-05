@@ -734,7 +734,7 @@ jobs:
           # 自托管 Runner 的 /tmp 会跨任务保留，使用唯一目录避免旧残留导致 clone 失败。
           DROIDSPACES_DIR="$(mktemp -d /tmp/Droidspaces-OSS.XXXXXX)"
           DROIDSPACES_COMMIT="1794a6a3bffa119d6320235d23f1b971a897fe86"
-          git clone --depth 1 https://github.com/ravindu644/Droidspaces-OSS.git "$DROIDSPACES_DIR"
+          git clone --filter=blob:none https://github.com/ravindu644/Droidspaces-OSS.git "$DROIDSPACES_DIR"
           git -C "$DROIDSPACES_DIR" checkout --detach "$DROIDSPACES_COMMIT"
           echo "Droidspaces pinned: $(git -C "$DROIDSPACES_DIR" rev-parse HEAD)"
           echo "DROIDSPACES_PATCHES=$DROIDSPACES_DIR/Documentation/resources/kernel-patches/GKI" >> $GITHUB_ENV
