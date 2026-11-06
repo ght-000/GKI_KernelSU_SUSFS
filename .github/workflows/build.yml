@@ -255,7 +255,7 @@ jobs:
             ANYKERNEL_COMMIT="403605f4a57b818839585dbae2c4b10765f13fcb"
             KERNEL_PATCHES_REPO="https://github.com/WildPlusKernel/kernel_patches.git"
             KERNEL_PATCHES_COMMIT="2ca270bc2edfb59be3a8b9319f21652bc99f7872"
-            SUKISU_PATCH_COMMIT="547ae94bcaec53d030398f857950c64662043a5d"
+            SUKISU_PATCH_COMMIT="eec45788c9a115e5498040298133336d6b6071dd"
           else
             ANYKERNEL_REPO="https://github.com/WildKernels/AnyKernel3.git"
             KERNEL_PATCHES_REPO="https://github.com/WildKernels/kernel_patches.git"
@@ -1285,14 +1285,6 @@ jobs:
             echo "CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER=y" >> "$DEFCONFIG"
           fi
 
-      - name: 伪装 IKCONFIG 数据源为基准 defconfig
-        working-directory: ${{ env.KERNEL_ROOT }}/common
-        run: |
-          if [ -f "$DEFCONFIG.orig" ]; then
-            sed -i 's|\$(obj)/config_data\.gz: \$(KCONFIG_CONFIG) FORCE|\$(obj)/config_data\.gz: arch/arm64/configs/gki_defconfig.orig FORCE|' kernel/Makefile || true
-            sed -i 's|\$(obj)/config_data: \$(KCONFIG_CONFIG) FORCE|\$(obj)/config_data: arch/arm64/configs/gki_defconfig.orig FORCE|' kernel/Makefile || true
-            echo "已将 IKCONFIG 数据源重定向为基准 defconfig (消除 VINTF 内部问题告警与配置泄露)"
-          fi
 
       - name: 配置内核名称
         working-directory: ${{ env.KERNEL_ROOT }}
@@ -1387,7 +1379,6 @@ jobs:
           fi
 
       - name: 修复 VINTF config_data 兼容性
-        if: inputs.droidspaces != 'off'
         working-directory: ${{ env.KERNEL_ROOT }}
         run: |
           set -euo pipefail
@@ -1471,24 +1462,21 @@ jobs:
         run: |
           set -euo pipefail
           IMAGE_DIR="$KERNEL_ROOT/bazel-bin/common/kernel_aarch64"
-          PATCH_TOOL="$SUKISU_PATCHES/kpm/patch_linux"
+          KPTOOLS="$SUKISU_PATCHES/kpm/kptools-linux"
+          KPIMG="$SUKISU_PATCHES/kpm/kpimg"
           test -f "$IMAGE_DIR/Image"
-          test -f "$PATCH_TOOL"
-          echo "使用固定 SukiSU_patch 的 KPM 工具: $PATCH_TOOL"
-          cp "$PATCH_TOOL" "$IMAGE_DIR/patch"
-          if [ -f "$SUKISU_PATCHES/kpm/kpimg" ]; then
-            cp "$SUKISU_PATCHES/kpm/kpimg" "$IMAGE_DIR/kpimg"
-          fi
-          chmod 0755 "$IMAGE_DIR/patch"
+          test -f "$KPTOOLS"
+          test -f "$KPIMG"
+          chmod 0755 "$KPTOOLS"
           cd "$IMAGE_DIR"
-          ./patch
+          "$KPTOOLS" -p -i Image -k "$KPIMG" -o oImage
           test -s oImage
           mv -f oImage Image
           if [ -f Image.lz4 ]; then
             lz4 -c -l -12 --favor-decSpeed Image > Image.lz4
           fi
           echo "KPM Image 补丁完成"
-          strings Image | grep -E 'KernelPatch|patched=' | head -20 || true
+          strings Image | grep -E '__arm64_sys_truncate|KernelPatch|patched=' | head -20 || true
 
       - name: 整理编译失败日志
         if: ${{ always() && steps.compile_kernel.outcome == 'failure' }}
