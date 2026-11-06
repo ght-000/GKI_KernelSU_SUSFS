@@ -255,7 +255,7 @@ jobs:
             ANYKERNEL_COMMIT="403605f4a57b818839585dbae2c4b10765f13fcb"
             KERNEL_PATCHES_REPO="https://github.com/WildPlusKernel/kernel_patches.git"
             KERNEL_PATCHES_COMMIT="2ca270bc2edfb59be3a8b9319f21652bc99f7872"
-            SUKISU_PATCH_COMMIT="83aa64b7548890bb1f2eff6c990c03a1802df27b"
+            SUKISU_PATCH_COMMIT="547ae94bcaec53d030398f857950c64662043a5d"
           else
             ANYKERNEL_REPO="https://github.com/WildKernels/AnyKernel3.git"
             KERNEL_PATCHES_REPO="https://github.com/WildKernels/kernel_patches.git"
@@ -1467,6 +1467,9 @@ jobs:
           test -f "$PATCH_TOOL"
           echo "使用固定 SukiSU_patch 的 KPM 工具: $PATCH_TOOL"
           cp "$PATCH_TOOL" "$IMAGE_DIR/patch"
+          if [ -f "$SUKISU_PATCHES/kpm/kpimg" ]; then
+            cp "$SUKISU_PATCHES/kpm/kpimg" "$IMAGE_DIR/kpimg"
+          fi
           chmod 0755 "$IMAGE_DIR/patch"
           cd "$IMAGE_DIR"
           ./patch
