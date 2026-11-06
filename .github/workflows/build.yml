@@ -712,6 +712,77 @@ jobs:
           echo "SukiSU commit: $KSU_COMMIT; matching driver version: $KSU_VERSION"
           grep -n '^KSU_VERSION' "$KSU_KBUILD_FILE"
 
+      - name: 为新版 SukiSU 补充 SUSFS Kconfig 开关
+        if: inputs.enable_susfs && inputs.ksu_variant == 'SukiSU'
+        working-directory: ${{ env.KERNEL_ROOT }}/KernelSU
+        run: |
+          set -euo pipefail
+          KSU_COMMIT=$(git rev-parse HEAD)
+          KCONFIG_FILE="kernel/Kconfig"
+          if [ ! -f "$KCONFIG_FILE" ]; then
+            echo "::error::未找到 $KCONFIG_FILE"
+            exit 1
+          fi
+          if ! grep -q '^config KSU_SUSFS$' "$KCONFIG_FILE"; then
+            cat >> "$KCONFIG_FILE" <<'EOF'
+
+          menu "KernelSU - SUSFS"
+          config KSU_SUSFS
+              bool "KernelSU addon - SUSFS"
+              depends on KSU && THREAD_INFO_IN_TASK
+              default y
+
+          config KSU_SUSFS_SUS_PATH
+              bool "SUSFS suspicious path support"
+              depends on KSU_SUSFS
+              default y
+
+          config KSU_SUSFS_SUS_MOUNT
+              bool "SUSFS suspicious mount support"
+              depends on KSU_SUSFS
+              default y
+
+          config KSU_SUSFS_SUS_KSTAT
+              bool "SUSFS kstat spoofing support"
+              depends on KSU_SUSFS
+              default y
+
+          config KSU_SUSFS_SPOOF_UNAME
+              bool "SUSFS uname spoofing support"
+              depends on KSU_SUSFS
+              default y
+
+          config KSU_SUSFS_ENABLE_LOG
+              bool "SUSFS kernel logging"
+              depends on KSU_SUSFS
+              default y
+
+          config KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+              bool "Hide KernelSU and SUSFS symbols"
+              depends on KSU_SUSFS
+              default y
+
+          config KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+              bool "SUSFS cmdline and bootconfig spoofing"
+              depends on KSU_SUSFS
+              default y
+
+          config KSU_SUSFS_OPEN_REDIRECT
+              bool "SUSFS open redirect support"
+              depends on KSU_SUSFS
+              default y
+
+          config KSU_SUSFS_SUS_MAP
+              bool "SUSFS maps hiding support"
+              depends on KSU_SUSFS
+              default y
+          endmenu
+          EOF
+            echo "已为 SukiSU $KSU_COMMIT 补充 SUSFS 配置项"
+          else
+            echo "SukiSU 已定义 SUSFS Kconfig，无需补充"
+          fi
+
       - name: 应用 SUSFS 补丁
         if: inputs.enable_susfs
         working-directory: ${{ env.KERNEL_ROOT }}
