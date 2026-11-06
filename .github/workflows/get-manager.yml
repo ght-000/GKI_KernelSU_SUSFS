@@ -56,6 +56,11 @@ jobs:
           echo " "
           echo "======================================================="
 
+      - name: 检出调用工作流配置
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
       - name: 安装依赖
         run: |
           sudo apt-get update
@@ -71,6 +76,13 @@ jobs:
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             echo "This is the SukiSU variant"
             git clone https://github.com/SukiSU-Ultra/SukiSU-Ultra.git KernelSU
+            CUSTOM_ENABLED=$(grep '^custom=' config/config | cut -d'=' -f2 || true)
+            SUKISU_COMMIT=$(grep '^sukisu=' config/config | cut -d'=' -f2- || true)
+            if [ "$CUSTOM_ENABLED" != "true" ] || [ -z "$SUKISU_COMMIT" ]; then
+              SUKISU_COMMIT=$(git -C KernelSU rev-parse origin/main)
+            fi
+            git -C KernelSU checkout --detach "$SUKISU_COMMIT"
+            echo "SUKISU_COMMIT=$SUKISU_COMMIT" >> "$GITHUB_ENV"
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40726)" ]; then
             echo "This is the SukiSU(40726) variant"
             git clone https://github.com/SukiSU-Ultra/SukiSU-Ultra.git KernelSU
@@ -109,8 +121,7 @@ jobs:
             KSU_VERSION=$((30000 + KSU_GIT_VERSION))
           fi
           if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            KSU_VERSION=41150
-            echo "Pinned SukiSU Ultra v4.3.0-r2 manager/kernel target: 41150"
+            echo "SukiSU source commit: $(git rev-parse HEAD)"
           fi
           echo $KSU_VERSION
           echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_ENV
@@ -132,13 +143,33 @@ jobs:
 
       - name: 添加 KernelSU
         id: add_KSU
-        continue-on-error: true
         run: |
           if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
-            echo "下载 SukiSU Ultra v4.3.0-r2 / 41150 管理器"
-            mkdir -p manager-artifacts/SukiSU_41150
-            curl -fL -o manager-artifacts/SukiSU_41150/SukiSU_v4.3.0-r2_41150-release.apk \
-              https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/download/v4.3.0-r2/SukiSU_v4.3.0-r2_41150-release.apk
+            set -euo pipefail
+            echo "获取与内核相同提交的 SukiSU Manager: $SUKISU_COMMIT"
+            RUNS_URL="https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/actions/workflows/build-manager.yml/runs?head_sha=$SUKISU_COMMIT&status=success&per_page=100"
+            RUN_ID=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" "$RUNS_URL" |
+              jq -r --arg sha "$SUKISU_COMMIT" '.workflow_runs[] | select(.head_sha == $sha and .conclusion == "success") | .id' | head -n 1)
+            if [ -z "$RUN_ID" ]; then
+              echo "::error::未找到提交 $SUKISU_COMMIT 对应的成功 Manager 构建"
+              exit 1
+            fi
+            ARTIFACTS=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/actions/runs/$RUN_ID/artifacts")
+            ARTIFACT_URL=$(printf '%s' "$ARTIFACTS" | jq -r '.artifacts[] | select(.name == "Manager" and .expired == false) | .archive_download_url' | head -n 1)
+            if [ -z "$ARTIFACT_URL" ]; then
+              echo "::error::提交 $SUKISU_COMMIT 的构建中没有可用 Manager artifact"
+              exit 1
+            fi
+            DEST="manager-artifacts/SukiSU_${KSU_VERSION}"
+            mkdir -p "$DEST"
+            curl -fL -H "Authorization: Bearer $GH_TOKEN" "$ARTIFACT_URL" -o /tmp/sukisu-manager.zip
+            unzip -q /tmp/sukisu-manager.zip -d "$DEST"
+            if ! find "$DEST" -type f -name '*.apk' | grep -q .; then
+              echo "::error::Manager artifact 未包含 APK"
+              exit 1
+            fi
+            find "$DEST" -type f -name '*.apk' -print
             exit 0
           fi
           case "${{ inputs.kernelsu_variant }}" in

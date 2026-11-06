@@ -694,18 +694,23 @@ jobs:
           echo "已更新 get_ksu_version_full 模板: $VERSION_TEMPLATE"
 
 
-      - name: 固定 SukiSU Ultra 驱动版本为 41150
+      - name: 固定 SukiSU Ultra 驱动版本为所选提交版本
         if: inputs.ksu_variant == 'SukiSU' && inputs.android_version == 'android14' && inputs.kernel_version == '6.1' && inputs.sub_level == '75'
         working-directory: ${{ env.KERNEL_ROOT }}/KernelSU
         run: |
           set -euo pipefail
-          KSU_VERSION_MAKEFILE="kernel/Makefile"
-          if [ ! -f "$KSU_VERSION_MAKEFILE" ]; then
-            echo "::error::未找到 $KSU_VERSION_MAKEFILE"
+          KSU_COMMIT=$(git rev-parse HEAD)
+          KSU_GIT_VERSION=$(git rev-list --count "$KSU_COMMIT")
+          KSU_VERSION=$((40000 + KSU_GIT_VERSION - 2815))
+          KSU_KBUILD_FILE="kernel/Kbuild"
+          if [ ! -f "$KSU_KBUILD_FILE" ] || ! grep -qE '^KSU_VERSION[[:space:]]*:=' "$KSU_KBUILD_FILE"; then
+            echo "::error::未找到 kernel/Kbuild 中的 KSU_VERSION 定义"
             exit 1
           fi
-          sed -i -E 's/^KSU_VERSION[[:space:]]*:=[[:space:]].*/KSU_VERSION     := 41150/' "$KSU_VERSION_MAKEFILE"
-          grep -n '^KSU_VERSION' "$KSU_VERSION_MAKEFILE"
+          sed -i -E "s/^KSU_VERSION[[:space:]]*:=[[:space:]].*/KSU_VERSION     := ${KSU_VERSION}/" "$KSU_KBUILD_FILE"
+          echo "KSU_VERSION=$KSU_VERSION" >> "$GITHUB_ENV"
+          echo "SukiSU commit: $KSU_COMMIT; matching driver version: $KSU_VERSION"
+          grep -n '^KSU_VERSION' "$KSU_KBUILD_FILE"
 
       - name: 应用 SUSFS 补丁
         if: inputs.enable_susfs
