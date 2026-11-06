@@ -1285,6 +1285,15 @@ jobs:
             echo "CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER=y" >> "$DEFCONFIG"
           fi
 
+      - name: 伪装 IKCONFIG 数据源为基准 defconfig
+        working-directory: ${{ env.KERNEL_ROOT }}/common
+        run: |
+          if [ -f "$DEFCONFIG.orig" ]; then
+            sed -i 's|\$(obj)/config_data\.gz: \$(KCONFIG_CONFIG) FORCE|\$(obj)/config_data\.gz: arch/arm64/configs/gki_defconfig.orig FORCE|' kernel/Makefile || true
+            sed -i 's|\$(obj)/config_data: \$(KCONFIG_CONFIG) FORCE|\$(obj)/config_data: arch/arm64/configs/gki_defconfig.orig FORCE|' kernel/Makefile || true
+            echo "已将 IKCONFIG 数据源重定向为基准 defconfig (消除 VINTF 内部问题告警与配置泄露)"
+          fi
+
       - name: 配置内核名称
         working-directory: ${{ env.KERNEL_ROOT }}
         run: |
