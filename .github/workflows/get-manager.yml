@@ -78,11 +78,17 @@ jobs:
             git clone https://github.com/SukiSU-Ultra/SukiSU-Ultra.git KernelSU
             CUSTOM_ENABLED=$(grep '^custom=' config/config | cut -d'=' -f2 || true)
             SUKISU_COMMIT=$(grep '^sukisu=' config/config | cut -d'=' -f2- || true)
+            SUKISU_MANAGER_COMMIT=$(grep '^sukisu_manager=' config/config | cut -d'=' -f2- || true)
             if [ "$CUSTOM_ENABLED" != "true" ] || [ -z "$SUKISU_COMMIT" ]; then
               SUKISU_COMMIT=$(git -C KernelSU rev-parse origin/main)
             fi
+            if [ -z "$SUKISU_MANAGER_COMMIT" ]; then
+              SUKISU_MANAGER_COMMIT="$SUKISU_COMMIT"
+            fi
+            git -C KernelSU fetch --quiet origin "$SUKISU_MANAGER_COMMIT"
             git -C KernelSU checkout --detach "$SUKISU_COMMIT"
             echo "SUKISU_COMMIT=$SUKISU_COMMIT" >> "$GITHUB_ENV"
+            echo "SUKISU_MANAGER_COMMIT=$SUKISU_MANAGER_COMMIT" >> "$GITHUB_ENV"
           elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU(40726)" ]; then
             echo "This is the SukiSU(40726) variant"
             git clone https://github.com/SukiSU-Ultra/SukiSU-Ultra.git KernelSU
@@ -105,7 +111,11 @@ jobs:
           cd KernelSU
 
           # 计算KSU版本号
-          KSU_GIT_VERSION=$(git rev-list --count HEAD)
+          if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
+            KSU_GIT_VERSION=$(git rev-list --count "$SUKISU_MANAGER_COMMIT")
+          else
+            KSU_GIT_VERSION=$(git rev-list --count HEAD)
+          fi
 
           if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             KSU_VERSION=$((40000 + KSU_GIT_VERSION - 2815))
@@ -146,19 +156,19 @@ jobs:
         run: |
           if [ "${{ inputs.kernelsu_variant }}" == "SukiSU" ]; then
             set -euo pipefail
-            echo "获取与内核相同提交的 SukiSU Manager: $SUKISU_COMMIT"
-            RUNS_URL="https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/actions/workflows/build-manager.yml/runs?head_sha=$SUKISU_COMMIT&status=success&per_page=100"
+            echo "获取 Manager 提交 $SUKISU_MANAGER_COMMIT 的 SukiSU Manager (内核兼容提交: $SUKISU_COMMIT)"
+            RUNS_URL="https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/actions/workflows/build-manager.yml/runs?head_sha=$SUKISU_MANAGER_COMMIT&status=success&per_page=100"
             RUN_ID=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" "$RUNS_URL" |
-              jq -r --arg sha "$SUKISU_COMMIT" '.workflow_runs[] | select(.head_sha == $sha and .conclusion == "success") | .id' | head -n 1)
+              jq -r --arg sha "$SUKISU_MANAGER_COMMIT" '.workflow_runs[] | select(.head_sha == $sha and .conclusion == "success") | .id' | head -n 1)
             if [ -z "$RUN_ID" ]; then
-              echo "::error::未找到提交 $SUKISU_COMMIT 对应的成功 Manager 构建"
+              echo "::error::未找到提交 $SUKISU_MANAGER_COMMIT 对应的成功 Manager 构建"
               exit 1
             fi
             ARTIFACTS=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
               "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/actions/runs/$RUN_ID/artifacts")
             ARTIFACT_URL=$(printf '%s' "$ARTIFACTS" | jq -r '.artifacts[] | select(.name == "Manager" and .expired == false) | .archive_download_url' | head -n 1)
             if [ -z "$ARTIFACT_URL" ]; then
-              echo "::error::提交 $SUKISU_COMMIT 的构建中没有可用 Manager artifact"
+              echo "::error::提交 $SUKISU_MANAGER_COMMIT 的构建中没有可用 Manager artifact"
               exit 1
             fi
             DEST="manager-artifacts/SukiSU_${KSU_VERSION}"

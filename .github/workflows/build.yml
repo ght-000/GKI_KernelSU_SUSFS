@@ -700,17 +700,28 @@ jobs:
         run: |
           set -euo pipefail
           KSU_COMMIT=$(git rev-parse HEAD)
-          KSU_GIT_VERSION=$(git rev-list --count "$KSU_COMMIT")
+          MANAGER_COMMIT=$(grep '^sukisu_manager=' "$GITHUB_WORKSPACE/config/config" | cut -d'=' -f2- || true)
+          if [ -z "$MANAGER_COMMIT" ]; then
+            MANAGER_COMMIT="$KSU_COMMIT"
+          fi
+          git fetch --quiet origin "$MANAGER_COMMIT"
+          KSU_GIT_VERSION=$(git rev-list --count "$MANAGER_COMMIT")
           KSU_VERSION=$((40000 + KSU_GIT_VERSION - 2815))
           KSU_KBUILD_FILE="kernel/Kbuild"
-          if [ ! -f "$KSU_KBUILD_FILE" ] || ! grep -qE '^KSU_VERSION[[:space:]]*:=' "$KSU_KBUILD_FILE"; then
-            echo "::error::未找到 kernel/Kbuild 中的 KSU_VERSION 定义"
+          if [ -f "$KSU_KBUILD_FILE" ] && grep -qE '^KSU_VERSION[[:space:]]*:=' "$KSU_KBUILD_FILE"; then
+            sed -i -E "s/^KSU_VERSION[[:space:]]*:=[[:space:]].*/KSU_VERSION     := ${KSU_VERSION}/" "$KSU_KBUILD_FILE"
+            echo "SukiSU driver version set in Kbuild: $KSU_VERSION"
+          elif [ -f "kernel/Makefile" ] && grep -qE '^GITHUB_COMMITS[[:space:]]*:=' kernel/Makefile; then
+            # The builtin SUSFS branch derives the version from main's commit count.
+            # Freeze that count to the Manager commit so both report the same KSU version.
+            sed -i -E "s/^GITHUB_COMMITS[[:space:]]*:=[[:space:]].*/GITHUB_COMMITS   := ${KSU_GIT_VERSION}/" kernel/Makefile
+            echo "SukiSU driver version set in kernel/Makefile: $KSU_VERSION"
+          else
+            echo "::error::未找到可配置的 SukiSU 版本定义 (kernel/Kbuild 或 kernel/Makefile)"
             exit 1
           fi
-          sed -i -E "s/^KSU_VERSION[[:space:]]*:=[[:space:]].*/KSU_VERSION     := ${KSU_VERSION}/" "$KSU_KBUILD_FILE"
           echo "KSU_VERSION=$KSU_VERSION" >> "$GITHUB_ENV"
-          echo "SukiSU commit: $KSU_COMMIT; matching driver version: $KSU_VERSION"
-          grep -n '^KSU_VERSION' "$KSU_KBUILD_FILE"
+          echo "SukiSU kernel commit: $KSU_COMMIT; Manager commit: $MANAGER_COMMIT; matching driver version: $KSU_VERSION"
 
       - name: 为新版 SukiSU 补充 SUSFS Kconfig 开关
         if: inputs.enable_susfs && inputs.ksu_variant == 'SukiSU'

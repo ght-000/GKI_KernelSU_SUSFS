@@ -25,4 +25,7 @@ gki-android16-6.12=
 
 # ==================== SukiSU 的 commit hash ====================
 # 仅当 custom=true 且使用 SukiSU 变体时生效
-sukisu=8ed5bd556fba073d52f4a4d98500b782db6437e6
+sukisu=1cfa57340590971cba7521ed536da8ebbedc5f0a
+# Manager APK source commit. Keep this on main: the latest main kernel API is
+# not compatible with the GKI/SUSFS inline hooks used by this build target.
+sukisu_manager=8ed5bd556fba073d52f4a4d98500b782db6437e6
