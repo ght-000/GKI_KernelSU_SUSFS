@@ -126,6 +126,47 @@ fi
 
 patch -p1 --fuzz=3 < "$SUSFS_PATCH" || true
 
+# The Android 14 6.1 GKI source has an extra trace/hooks/blk.h include that
+# rejects the SUSFS namespace.c header/declaration hunk. Restore that hunk
+# explicitly so the inline hooks and SUSFS mount identifiers are declared.
+if [[ "$ANDROID_VERSION" == "android14" && "$KERNEL_VERSION" == "6.1" ]]; then
+  python3 - <<'PY'
+from pathlib import Path
+
+path = Path("fs/namespace.c")
+text = path.read_text()
+include = "#include <linux/susfs_def.h>"
+if include not in text:
+    marker = "#include <linux/mnt_idmapping.h>"
+    if marker not in text:
+        raise SystemExit("namespace.c SUSFS include anchor not found")
+    text = text.replace(
+        marker,
+        marker + "\n#ifdef CONFIG_KSU_SUSFS\n" + include
+        + "\n#endif // #ifdef CONFIG_KSU_SUSFS",
+        1,
+    )
+
+if "extern bool susfs_is_current_ksu_domain(void);" not in text:
+    marker = "/* Maximum number of mounts in a mount namespace */"
+    declarations = """
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+extern bool susfs_is_current_ksu_domain(void);
+extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;
+
+#define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+
+"""
+    if marker not in text:
+        raise SystemExit("namespace.c SUSFS declaration anchor not found")
+    text = text.replace(marker, declarations + marker, 1)
+
+path.write_text(text)
+PY
+  rm -f fs/namespace.c.rej
+fi
+
 # 为尚未提供 SU 会话 FD 接口的 SukiSU/ReSukiSU 恢复旧版 exec hook 行为
 EXEC_HELPER=""
 if [[ "$KSU_VARIANT" == SukiSU* || "$KSU_VARIANT" == "ReSukiSU" ]]; then

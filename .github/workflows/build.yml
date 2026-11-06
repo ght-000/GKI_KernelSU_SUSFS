@@ -794,6 +794,31 @@ jobs:
             echo "SukiSU 已定义 SUSFS Kconfig，无需补充"
           fi
 
+          # builtin commit 1cfa5734 uses the priority-UID SUSFS API. Older
+          # builtin Kconfig files lack the option even when matching SUSFS
+          # headers and implementation are present.
+          if ! grep -q '^config KSU_SUSFS_PRIORITY_UID_FILTER$' "$KCONFIG_FILE"; then
+            python3 - "$KCONFIG_FILE" <<'PY'
+          import pathlib
+          import sys
+
+          path = pathlib.Path(sys.argv[1])
+          text = path.read_text()
+          start = text.find('menu "KernelSU - SUSFS"')
+          end = text.find("\nendmenu", start)
+          if start < 0 or end < 0:
+              raise SystemExit("KernelSU - SUSFS Kconfig menu was not found")
+          option = """
+          config KSU_SUSFS_PRIORITY_UID_FILTER
+              bool "Enable SUSFS priority UID filter"
+              depends on KSU_SUSFS
+              default y
+          """
+          path.write_text(text[:end] + option + text[end:])
+          PY
+            echo "已补充 CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER"
+          fi
+
       - name: 应用 SUSFS 补丁
         if: inputs.enable_susfs
         working-directory: ${{ env.KERNEL_ROOT }}
@@ -1247,6 +1272,10 @@ jobs:
           CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
           CONFIG_KSU_SUSFS_SUS_MAP=y
           EOF
+
+          if [ "${{ inputs.ksu_variant }}" == "SukiSU" ]; then
+            echo "CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER=y" >> "$DEFCONFIG"
+          fi
 
       - name: 配置内核名称
         working-directory: ${{ env.KERNEL_ROOT }}
