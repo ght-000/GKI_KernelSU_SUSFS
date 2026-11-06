@@ -255,7 +255,7 @@ jobs:
             ANYKERNEL_COMMIT="403605f4a57b818839585dbae2c4b10765f13fcb"
             KERNEL_PATCHES_REPO="https://github.com/WildPlusKernel/kernel_patches.git"
             KERNEL_PATCHES_COMMIT="2ca270bc2edfb59be3a8b9319f21652bc99f7872"
-            SUKISU_PATCH_COMMIT=""
+            SUKISU_PATCH_COMMIT="83aa64b7548890bb1f2eff6c990c03a1802df27b"
           else
             ANYKERNEL_REPO="https://github.com/WildKernels/AnyKernel3.git"
             KERNEL_PATCHES_REPO="https://github.com/WildKernels/kernel_patches.git"
@@ -1473,7 +1473,7 @@ jobs:
           test -s oImage
           mv -f oImage Image
           if [ -f Image.lz4 ]; then
-            lz4 -9 -f Image Image.lz4
+            lz4 -c -l -12 --favor-decSpeed Image > Image.lz4
           fi
           echo "KPM Image 补丁完成"
           strings Image | grep -E 'KernelPatch|patched=' | head -20 || true
