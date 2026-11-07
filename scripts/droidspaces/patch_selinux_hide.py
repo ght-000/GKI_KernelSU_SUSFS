@@ -73,7 +73,7 @@ if rules_file:
     rules_file.write_text(content, encoding="utf-8")
     print(f"Patched rules: {rules_file}")
 
-# 3. Update security/selinux/hooks.c to forward access/context/setprocattr through backup_sepolicy
+# 3. Update security/selinux/hooks.c with proper block braces to prevent -Wmisleading-indentation
 hooks_file = root / "common" / "security" / "selinux" / "hooks.c"
 if hooks_file.is_file():
     content = hooks_file.read_text(encoding="utf-8")
@@ -87,23 +87,62 @@ if hooks_file.is_file():
     if "extern bool ksu_selinux_hide_running __read_mostly;" in content and "my_write_context" not in content:
         content = content.replace("extern bool ksu_selinux_hide_running __read_mostly;", decls)
 
-    target_setprocattr = "return susfs_selinux_setprocattr(name, value, size);"
-    if target_setprocattr in content:
-        content = content.replace(
-            target_setprocattr,
-            "if (backup_sepolicy) return my_setprocattr(name, value, size); return susfs_selinux_setprocattr(name, value, size);",
-        )
-    target_write_context = "return susfs_sel_write_context(file, buf, size);"
-    if target_write_context in content:
-        content = content.replace(
-            target_write_context,
-            "if (backup_sepolicy) return my_write_context(file, buf, size); return susfs_sel_write_context(file, buf, size);",
-        )
-    target_write_access = "return susfs_sel_write_access(file, buf, size);"
-    if target_write_access in content:
-        content = content.replace(
-            target_write_access,
-            "if (backup_sepolicy) return my_write_access(file, buf, size); return susfs_sel_write_access(file, buf, size);",
-        )
+    old_setprocattr = """static int handle_selinux_setprocattr(const char *name, void *value, size_t size)
+{
+	if ((likely(!strcmp(name, "current") &&
+				current_uid().val >= 10000 &&
+				ksu_selinux_hide_running)))
+		return susfs_selinux_setprocattr(name, value, size);
+	return selinux_setprocattr(name, value, size);
+}"""
+
+    new_setprocattr = """static int handle_selinux_setprocattr(const char *name, void *value, size_t size)
+{
+	if ((likely(!strcmp(name, "current") &&
+				current_uid().val >= 10000 &&
+				ksu_selinux_hide_running))) {
+		if (backup_sepolicy)
+			return my_setprocattr(name, value, size);
+		return susfs_selinux_setprocattr(name, value, size);
+	}
+	return selinux_setprocattr(name, value, size);
+}"""
+
+    old_write_context = """static ssize_t handle_sel_write_context(struct file *file, char *buf, size_t size) {
+	if ((likely(current_uid().val >= 10000 && ksu_selinux_hide_running)))
+		return susfs_sel_write_context(file, buf, size);
+	return sel_write_context(file, buf, size);
+}"""
+
+    new_write_context = """static ssize_t handle_sel_write_context(struct file *file, char *buf, size_t size) {
+	if ((likely(current_uid().val >= 10000 && ksu_selinux_hide_running))) {
+		if (backup_sepolicy)
+			return my_write_context(file, buf, size);
+		return susfs_sel_write_context(file, buf, size);
+	}
+	return sel_write_context(file, buf, size);
+}"""
+
+    old_write_access = """static ssize_t handle_sel_write_access(struct file *file, char *buf, size_t size)
+{
+	if ((likely(current_uid().val >= 10000 && ksu_selinux_hide_running)))
+		return susfs_sel_write_access(file, buf, size);
+	return sel_write_access(file, buf, size);
+}"""
+
+    new_write_access = """static ssize_t handle_sel_write_access(struct file *file, char *buf, size_t size)
+{
+	if ((likely(current_uid().val >= 10000 && ksu_selinux_hide_running))) {
+		if (backup_sepolicy)
+			return my_write_access(file, buf, size);
+		return susfs_sel_write_access(file, buf, size);
+	}
+	return sel_write_access(file, buf, size);
+}"""
+
+    content = content.replace(old_setprocattr, new_setprocattr)
+    content = content.replace(old_write_context, new_write_context)
+    content = content.replace(old_write_access, new_write_access)
+
     hooks_file.write_text(content, encoding="utf-8")
     print(f"Patched hooks: {hooks_file}")
