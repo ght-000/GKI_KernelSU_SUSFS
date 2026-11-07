@@ -830,6 +830,10 @@ jobs:
           SUB_LEVEL: ${{ inputs.sub_level }}
         run: bash "$GITHUB_WORKSPACE/scripts/susfs_fixes/apply.sh"
 
+      - name: 增强 SELinux Hide 策略隔离
+        working-directory: ${{ env.KERNEL_ROOT }}
+        run: python3 "$GITHUB_WORKSPACE/scripts/droidspaces/patch_selinux_hide.py" "$KERNEL_ROOT"
+
       - name: 克隆 Droidspaces 补丁仓库
         if: inputs.droidspaces != 'off'
         run: |
