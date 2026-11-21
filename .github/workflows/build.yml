@@ -606,14 +606,7 @@ jobs:
               git clone -b "$BRANCH" https://github.com/SukiSU-Nova/SukiSU-Nova.git KernelSU
               curl -LSs "https://raw.githubusercontent.com/SukiSU-Nova/SukiSU-Nova/builtin-new/kernel/setup.sh" | bash -s "$BRANCH"
               if [ -f "KernelSU/kernel/feature/selinux_hide.c" ]; then
-                python3 -c '
-p = "KernelSU/kernel/feature/selinux_hide.c"
-s = open(p).read()
-old = "\tfake_status->sequence = 0;\n\tfake_status->policyload = 0;"
-new = "\tfake_status->sequence = 2;\n\tfake_status->policyload = 1;"
-assert old in s, "pattern not found in selinux_hide.c"
-open(p, "w").write(s.replace(old, new, 1))
-'
+                python3 -c 'p="KernelSU/kernel/feature/selinux_hide.c"; s=open(p).read(); old="\tfake_status->sequence = 0;\n\tfake_status->policyload = 0;"; new="\tfake_status->sequence = 2;\n\tfake_status->policyload = 1;"; assert old in s; open(p,"w").write(s.replace(old,new,1))'
               fi
               NOVA_VER=$(curl -fsSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/SukiSU-Nova/SukiSU-Nova/releases/latest" | grep -oE 'SukiSU_Nova_[^"]+_[0-9]+-arm64-v8a-release\.apk' | head -n1 | sed -n 's/.*_\([0-9]\+\)-arm64-v8a-release\.apk/\1/p' || true)
               NOVA_VER="${NOVA_VER:-35000}"
