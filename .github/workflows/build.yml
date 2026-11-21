@@ -1357,14 +1357,20 @@ jobs:
           set -euo pipefail
           IMAGE_DIR="$KERNEL_ROOT/bazel-bin/common/kernel_aarch64"
           test -f "$IMAGE_DIR/Image"
-          curl -fL "https://raw.githubusercontent.com/SukiSU-Nova/SukiSU_patch/main/kpm/patch_linux" -o "$IMAGE_DIR/patch"
-          chmod 0755 "$IMAGE_DIR/patch"
-          cd "$IMAGE_DIR"
-          ./patch
-          test -s oImage
-          mv -f oImage Image
+          KP_WORK="/tmp/sukisu_kp_build"
+          rm -rf "$KP_WORK"
+          mkdir -p "$KP_WORK"
+          git clone --depth=1 https://github.com/SukiSU-Nova/SukiSU_KernelPatch_patch.git "$KP_WORK/src"
+          curl -fL "https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-aarch64-none-elf.tar.xz" -o "$KP_WORK/aarch64-none-elf.tar.xz"
+          tar -Jxf "$KP_WORK/aarch64-none-elf.tar.xz" -C "$KP_WORK"
+          export TARGET_COMPILE="$KP_WORK/arm-gnu-toolchain-12.2.rel1-x86_64-aarch64-none-elf/bin/aarch64-none-elf-"
+          ANDROID=1 make -C "$KP_WORK/src/kernel" -j"$(nproc)" kpimg
+          make -C "$KP_WORK/src/tools" -j"$(nproc)"
+          "$KP_WORK/src/tools/kptools" -p -i "$IMAGE_DIR/Image" -k "$KP_WORK/src/kernel/kpimg" -o "$IMAGE_DIR/oImage"
+          test -s "$IMAGE_DIR/oImage"
+          mv -f "$IMAGE_DIR/oImage" "$IMAGE_DIR/Image"
           echo "SukiSU-Nova KPM Image 补丁完成"
-          strings Image | grep -E 'KernelPatch|patched=' | head -20 || true
+          strings "$IMAGE_DIR/Image" | grep -E 'KernelPatch|patched=' | head -n 20 || true
 
       - name: 整理编译失败日志
         if: ${{ always() && steps.compile_kernel.outcome == 'failure' }}
