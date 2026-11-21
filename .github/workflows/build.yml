@@ -528,6 +528,9 @@ jobs:
             "Official"|"ReSukiSU")
               BRANCH="-s main"
               ;;
+            "SukiSU-Nova")
+              BRANCH="builtin-new"
+              ;;
             "SukiSU")
               if [ "${{ inputs.enable_susfs }}" = "false" ]; then
                 BRANCH="-s main"
@@ -597,6 +600,10 @@ jobs:
             "ReSukiSU")
               echo "添加 ReSukiSU..."
               curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash $BRANCH
+              ;;
+            "SukiSU-Nova")
+              echo "添加 SukiSU-Nova..."
+              curl -LSs "https://raw.githubusercontent.com/SukiSU-Nova/SukiSU-Nova/builtin-new/kernel/setup.sh" | bash -s "$BRANCH"
               ;;
             *)
               if [ -z "$LEGACY_SUKISU_CONFIG" ]; then
@@ -1104,7 +1111,7 @@ jobs:
           CONFIG_KSU=y
           EOF
 
-          if [ "${{ inputs.ksu_variant }}" == "SukiSU" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU(40726)" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU(40548)" ] || [ "${{ inputs.ksu_variant }}" == "ReSukiSU" ] || [ "${{ inputs.ksu_variant }}" == "Next" ]; then
+          if [ "${{ inputs.ksu_variant }}" == "SukiSU" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU(40726)" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU(40548)" ] || [ "${{ inputs.ksu_variant }}" == "ReSukiSU" ] || [ "${{ inputs.ksu_variant }}" == "SukiSU-Nova" ] || [ "${{ inputs.ksu_variant }}" == "Next" ]; then
             if [[ "${{ inputs.use_kpm }}" == enabled* ]] || [[ "${{ inputs.use_kpm }}" == patched* ]]; then
               if ! grep -RqsE '^[[:space:]]*config[[:space:]]+KPM([[:space:]]|$)' common KernelSU 2>/dev/null; then
                 echo "错误: 已请求启用 KPM，但当前 KernelSU 代码未声明 CONFIG_KPM" >&2
@@ -1340,6 +1347,21 @@ jobs:
           test -s oImage
           mv -f oImage Image
           echo "KPM Image 补丁完成"
+          strings Image | grep -E 'KernelPatch|patched=' | head -20 || true
+
+      - name: 应用 SukiSU-Nova KPM Image 补丁
+        if: ${{ success() && startsWith(inputs.use_kpm, 'patched') && inputs.ksu_variant == 'SukiSU-Nova' }}
+        run: |
+          set -euo pipefail
+          IMAGE_DIR="$KERNEL_ROOT/bazel-bin/common/kernel_aarch64"
+          test -f "$IMAGE_DIR/Image"
+          curl -fL "https://raw.githubusercontent.com/SukiSU-Nova/SukiSU_patch/main/kpm/patch_linux" -o "$IMAGE_DIR/patch"
+          chmod 0755 "$IMAGE_DIR/patch"
+          cd "$IMAGE_DIR"
+          ./patch
+          test -s oImage
+          mv -f oImage Image
+          echo "SukiSU-Nova KPM Image 补丁完成"
           strings Image | grep -E 'KernelPatch|patched=' | head -20 || true
 
       - name: 整理编译失败日志

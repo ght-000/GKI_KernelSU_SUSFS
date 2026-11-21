@@ -65,6 +65,20 @@ jobs:
         id: get_version
         run: |
 
+          if [ "${{ inputs.kernelsu_variant }}" == "SukiSU-Nova" ]; then
+            echo "下载 SukiSU-Nova 管理器..."
+            mkdir -p "manager-artifacts/SukiSU-Nova"
+            MANAGER_URL=$(curl -fsSL "https://api.github.com/repos/SukiSU-Nova/SukiSU-Nova/releases/latest" |
+              jq -r '.assets[] | select(.name | startswith("SukiSU_Nova_") and endswith("-arm64-v8a-release.apk")) | .browser_download_url' |
+              head -n 1)
+            if [ -z "$MANAGER_URL" ]; then
+              echo "未找到 SukiSU-Nova 管理器下载地址。"
+              exit 1
+            fi
+            curl -fL -o "manager-artifacts/SukiSU-Nova/$(basename "$MANAGER_URL")" "$MANAGER_URL"
+            exit 0
+          fi
+
           if [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then
             echo "This is the Next variant"
             git clone https://github.com/KernelSU-Next/KernelSU-Next.git KernelSU
@@ -82,6 +96,9 @@ jobs:
           elif [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
             echo "This is the ReSukiSU variant"
             git clone https://github.com/ReSukiSU/ReSukiSU.git KernelSU
+          elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU-Nova" ]; then
+            echo "This is the SukiSU-Nova variant"
+            git clone -b builtin-new https://github.com/SukiSU-Nova/SukiSU-Nova.git KernelSU
           elif [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
             echo "This is the Official"
             git clone https://github.com/tiann/KernelSU.git KernelSU
@@ -103,6 +120,8 @@ jobs:
             KSU_VERSION=40548
           elif [ "${{ inputs.kernelsu_variant }}" == "ReSukiSU" ]; then
             KSU_VERSION=$((30700 + KSU_GIT_VERSION))
+          elif [ "${{ inputs.kernelsu_variant }}" == "SukiSU-Nova" ]; then
+            KSU_VERSION=$((30000 + KSU_GIT_VERSION))
           elif [ "${{ inputs.kernelsu_variant }}" == "Official" ]; then
             KSU_VERSION=$((20000 + KSU_GIT_VERSION))
           elif [ "${{ inputs.kernelsu_variant }}" == "Next" ]; then

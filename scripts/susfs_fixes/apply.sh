@@ -22,7 +22,7 @@ case "$KSU_VARIANT" in
 
     cd ..
     ;;
-  "Next"|"SukiSU"|"SukiSU(40726)"|"SukiSU(40548)"|"ReSukiSU")
+  "Next"|"SukiSU"|"SukiSU(40726)"|"SukiSU(40548)"|"ReSukiSU"|"SukiSU-Nova")
     echo "Next/SukiSU/SukiSU(40726)/SukiSU(40548)/ReSukiSU 使用内置 SUSFS 支持"
     ;;
 esac
