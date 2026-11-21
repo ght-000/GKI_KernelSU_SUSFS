@@ -603,6 +603,7 @@ jobs:
               ;;
             "SukiSU-Nova")
               echo "添加 SukiSU-Nova..."
+              git clone -b "$BRANCH" https://github.com/SukiSU-Nova/SukiSU-Nova.git KernelSU
               curl -LSs "https://raw.githubusercontent.com/SukiSU-Nova/SukiSU-Nova/builtin-new/kernel/setup.sh" | bash -s "$BRANCH"
               ;;
             *)
