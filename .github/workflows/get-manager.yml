@@ -157,7 +157,7 @@ jobs:
           if [ "${{ inputs.kernelsu_variant }}" == "SukiSU-Nova" ]; then
             echo "下载 SukiSU-Nova 管理器..."
             mkdir -p "manager-artifacts/SukiSU-Nova"
-            MANAGER_URL=$(curl -fsSL "https://api.github.com/repos/SukiSU-Nova/SukiSU-Nova/releases/latest" |
+            MANAGER_URL=$(curl -fsSL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/SukiSU-Nova/SukiSU-Nova/releases/latest" |
               jq -r '.assets[] | select(.name | startswith("SukiSU_Nova_") and endswith("-arm64-v8a-release.apk")) | .browser_download_url' |
               head -n 1)
             if [ -z "$MANAGER_URL" ]; then
