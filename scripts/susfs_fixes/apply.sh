@@ -34,10 +34,6 @@ if [[ ! "$CURRENT_SUB" =~ ^[0-9]+$ ]]; then
 fi
 
 # 兼容缺少 VMA padding 接口的 5.10.66～209、5.15.74～144 和 6.1.25～68
-if ! grep -qF '<trace/hooks/blk.h>' fs/namespace.c; then
-  sed -i '/^ #include <trace\/hooks\/blk.h>$/d' "$SUSFS_PATCH"
-fi
-
 if grep -qF 'VMA_PAD_START(vma)' "$SUSFS_PATCH" \
   && ! grep -Rqs 'VMA_PAD_START' ./include/linux; then
   echo "目标内核未提供 VMA_PAD_START，使用 vma->vm_end 兼容 SUSFS OPEN_REDIRECT"
@@ -128,7 +124,15 @@ if grep -qF '#include <trace/hooks/fs.h>' fs/super.c; then
   SUPER_FS_H_REMOVED=1
 fi
 
+ADDED_BLK_TRACE_HOOK=0
+if [ -f fs/namespace.c ] && ! grep -qF '<trace/hooks/blk.h>' fs/namespace.c; then
+  sed -i '/^#include "internal.h"$/a #include <trace/hooks/blk.h>' fs/namespace.c
+  ADDED_BLK_TRACE_HOOK=1
+fi
 patch -p1 --fuzz=3 < "$SUSFS_PATCH" || true
+if [ "$ADDED_BLK_TRACE_HOOK" -eq 1 ]; then
+  sed -i '/^#include <trace\/hooks\/blk.h>$/d' fs/namespace.c
+fi
 
 # 为尚未提供 SU 会话 FD 接口的 SukiSU/ReSukiSU 恢复旧版 exec hook 行为
 EXEC_HELPER=""
